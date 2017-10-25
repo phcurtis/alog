@@ -67,7 +67,7 @@ type alignStruct struct {
 }
 
 // Gtrace - global trace log which is available at init time of this package.
-var Gtrace = lvlStruct{
+var Gtrace = LvlStruct{
 	flags:     FlagsDef,
 	log:       log.New(os.Stdout, "GTRACE: ", LflagsDef),
 	mu:        new(sync.Mutex),
@@ -77,7 +77,7 @@ var Gtrace = lvlStruct{
 }
 
 // lvlStruct - contains a given log level stuff
-type lvlStruct struct {
+type LvlStruct struct {
 	ignore     bool        // way to ignore Print,Printf,Println, CondPrint, CondPrintln
 	flags      int         // func name type
 	log        *log.Logger // stdlib logger
@@ -94,15 +94,15 @@ type lvlStruct struct {
 type GlvlStruct struct {
 	ignoreall    bool // way to ignore Print,Printf,Println, CondPrint, CondPrintln
 	Name         string
-	Trace        *lvlStruct
-	Debug        *lvlStruct
-	Info         *lvlStruct
-	Notice       *lvlStruct
-	Warning      *lvlStruct
-	Alert        *lvlStruct
-	Error        *lvlStruct
-	Critical     *lvlStruct
-	Emergency    *lvlStruct
+	Trace        *LvlStruct
+	Debug        *LvlStruct
+	Info         *LvlStruct
+	Notice       *LvlStruct
+	Warning      *LvlStruct
+	Alert        *LvlStruct
+	Error        *LvlStruct
+	Critical     *LvlStruct
+	Emergency    *LvlStruct
 	mu           sync.Mutex // mutex for group
 	firstIowr    IowrStruct
 	logAlignFile int
@@ -157,7 +157,7 @@ const (
 )
 
 type lvlListStruct struct {
-	level **lvlStruct
+	level **LvlStruct
 	name  string
 	Blab  string
 	iowr  *io.Writer
@@ -225,7 +225,7 @@ func newll(glabel string, flags int, logFlags int, iowr *IowrStruct, panicErr bo
 			}
 			return nil, errnew
 		}
-		*v.level = &lvlStruct{
+		*v.level = &LvlStruct{
 			log:   log.New(os.Stdout, glabel+v.Blab, logFlags),
 			flags: flags,
 			mu:    &g.mu,

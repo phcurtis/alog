@@ -17,17 +17,17 @@ import (
 
 var osExit = os.Exit
 
-func (l *lvlStruct) outExit(s string) {
+func (l *LvlStruct) outExit(s string) {
 	_ = l.out(s)
 	osExit(1)
 }
 
-func (l *lvlStruct) outPanic(s string) {
+func (l *LvlStruct) outPanic(s string) {
 	_ = l.out(s)
 	log.Panic(s)
 }
 
-func (l *lvlStruct) out(s string) error {
+func (l *LvlStruct) out(s string) error {
 	// may have to re-examine having this lock in place for entire func
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -43,7 +43,7 @@ func align(str string, width int) string {
 }
 
 // out - a worker func that does final prep before calling stdlib log.Output.
-func (l *lvlStruct) outll(lvladj int, s string) error {
+func (l *LvlStruct) outll(lvladj int, s string) error {
 	l.outCtr++
 	//fmt.Printf("%s:outCtr:%d\n", l.name, l.outCtr)
 
