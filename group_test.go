@@ -14,7 +14,7 @@ func TestSetIgnoreAll(t *testing.T) {
 	g := grplog.MustNew("glog:", 0)
 	input := []bool{true, false, true, false}
 	want := []bool{true, false, true, false}
-	for i, _ := range input {
+	for i := range input {
 		g.SetIgnoreAll(input[i])
 		got := g.GetIgnoreAll()
 		if got != want[i] {
