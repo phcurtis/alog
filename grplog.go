@@ -76,7 +76,7 @@ var Gtrace = LvlStruct{
 	align:     alignStruct{filea: LogAlignFileDef, funca: LogAlignFuncDef},
 }
 
-// lvlStruct - contains a given log level stuff
+// LvlStruct - contains a given log level stuff
 type LvlStruct struct {
 	ignore     bool        // way to ignore Print,Printf,Println, CondPrint, CondPrintln
 	flags      int         // func name type

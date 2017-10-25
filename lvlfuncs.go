@@ -28,7 +28,7 @@ func (l *LvlStruct) CondPrint(cond bool, x ...interface{}) {
 	}
 }
 
-// CondPrint - conditional version of Printf
+// CondPrintf ... conditional version of Printf
 func (l *LvlStruct) CondPrintf(cond bool, f string, x ...interface{}) {
 	if cond {
 		if l.anyIgnore(true) {
@@ -114,7 +114,7 @@ func (l *LvlStruct) Ignore() bool {
 	return l.ignore
 }
 
-// GetOutput
+// GetOutput - returns the log Output io.Writer
 func (l *LvlStruct) GetOutput() io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
