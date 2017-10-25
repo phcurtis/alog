@@ -1,55 +1,115 @@
-/* package alog creates a grouped set of convenience hooks into stdlib log.logger
- for various levels of logging: Trace, Debug, Info, Notice, Warning, Alert, Error,
- Critical, Emergency. Having them grouped easily allows multiple sets within a 
- program as well as providing a way to easily grep the output coming from that 
- group.  i.e.  alog:TRACE: alog:DEBUG versus blog:TRACE: blog:ERROR  ....
-*/
-package alog
+// Copyright 2017 phcurtis grplog Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+// Package grplog creates a grouped set of convenience hooks into stdlib log.logger
+// for various levels of logging: Trace, Debug, Info, Notice, Warning, Alert, Error,
+// Critical, Emergency. Having them grouped easily allows multiple sets within a
+// program as well as providing a way to easily grep the output coming from that
+// group.  i.e.  glog:TRACE: glog:DEBUG versus blog:TRACE: blog:ERROR  ....
+package grplog
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"sync"
 )
 
-var Version = "0.04"
+// Version of this package
+var Version = 0.200
 
-// alog level base labels [Blab]
+//type flagst int
+
+// func name type setting during log output
 const (
-	TraceBlab     = "TRACE: "
-	DebugBlab     = "DEBUG: "
-	InfoBlab      = "INFO: "
-	NoticeBlab    = "NOTICE: "
-	WarningBlab   = "WARNING: "
-	AlertBlab     = "ALERT: "
-	ErrorBlab     = "ERROR: "
-	CriticalBlab  = "CRITICAL: "
-	EmergencyBlab = "EMERGENCY: "
+	FfnBase    = 1 << iota            // no funcname output
+	FfnFull                           // base funcname output
+	Ffilenogps                        // remove go path src prefix applicable to FfnFull
+	FlagsDef   = FfnBase | Ffilenogps //
+	FlagsOff   = 0
 )
 
-// stdlib log flags
+// stdlib log flags convenience constants
 const (
-	LFlagsDef = log.Ldate |
-		log.Ltime |
-		log.Lmicroseconds |
-		log.Lshortfile
-
-	LFlagsDefL = log.Ldate |
-		log.Ltime |
-		log.Lmicroseconds |
-		log.Llongfile
-
-	LFlagsCmn = log.Ldate |
-		log.Ltime |
-		log.Lshortfile
-
-	LFlagsCmnL = log.Ldate |
-		log.Ltime |
-		log.Llongfile
+	LflagsDTS  = log.Ldate | log.Ltime | log.Lshortfile
+	LflagsDTL  = log.Ldate | log.Ltime | log.Llongfile
+	LflagsDTSM = log.Ldate | log.Ltime | log.Lshortfile | log.Lmicroseconds
+	LflagsDTLM = log.Ldate | log.Ltime | log.Llongfile | log.Lmicroseconds
+	LflagsDef  = LflagsDTS
+	LflagsDefL = LflagsDTL
+	LflagsOff  = 0
 )
 
-// alog iowriters struct
+var gopathsrc string
+
+func init() {
+	gopathsrc = os.Getenv("GOPATH")
+	if gopathsrc != "" {
+		gopathsrc += "/src/"
+	}
+}
+
+// Log related constants
+const (
+	LogAlignFileDef = 24 // log alignment 'file' field minimum width
+	LogAlignFileMax = 50 // log alignment 'file' field minimum width max
+
+	LogAlignFuncDef = 0  // log alignment 'func' field minimum width
+	LogAlignFuncMax = 50 // log alignment 'func' field minimum width max
+)
+
+type alignStruct struct {
+	filea int
+	funca int
+}
+
+// Gtrace - global trace log which is available at init time of this package.
+var Gtrace = lvlStruct{
+	flags:     FlagsDef,
+	log:       log.New(os.Stdout, "GTRACE: ", LflagsDef),
+	mu:        new(sync.Mutex),
+	logOutput: os.Stdout,
+	name:      "Gtrace",
+	align:     alignStruct{filea: LogAlignFileDef, funca: LogAlignFuncDef},
+}
+
+// lvlStruct - contains a given log level stuff
+type lvlStruct struct {
+	ignore     bool        // way to ignore Print,Printf,Println, CondPrint, CondPrintln
+	flags      int         // func name type
+	log        *log.Logger // stdlib logger
+	par        *GlvlStruct // parent this lvl belongs too if nil its Gtrace
+	mu         *sync.Mutex //
+	logOutput  io.Writer   // maintain copy since log.logger does not support Get Output
+	outCtr     uint64      // counter of times func 'out' called
+	outCharCtr uint64      // counter of chars sent through func 'out' and onto log.logger
+	name       string      // go entryPoint name
+	align      alignStruct //
+}
+
+// GlvlStruct - group log level struct
+type GlvlStruct struct {
+	ignoreall    bool // way to ignore Print,Printf,Println, CondPrint, CondPrintln
+	Name         string
+	Trace        *lvlStruct
+	Debug        *lvlStruct
+	Info         *lvlStruct
+	Notice       *lvlStruct
+	Warning      *lvlStruct
+	Alert        *lvlStruct
+	Error        *lvlStruct
+	Critical     *lvlStruct
+	Emergency    *lvlStruct
+	mu           sync.Mutex // mutex for group
+	firstIowr    IowrStruct
+	logAlignFile int
+	logAlignFunc int
+}
+
+// IowrStruct - grplog iowriters struct
 type IowrStruct struct {
 	Trace     io.Writer
 	Debug     io.Writer
@@ -62,8 +122,9 @@ type IowrStruct struct {
 	Emergency io.Writer
 }
 
-// IowrDefault returns the current default IowrStruct which subsequent invocations could be different if
-// io.Writers such as os.Stdout and os.Stderr have changed between invocations of this function.
+// IowrDefault returns the current default IowrStruct. Subsequent
+// invocations could be different if io.Writers such as os.Stdout
+// and os.Stderr have changed between invocations of this function.
 func IowrDefault() IowrStruct {
 	return IowrStruct{
 
@@ -82,117 +143,96 @@ func IowrDefault() IowrStruct {
 	}
 }
 
-// alog struct containing corresponding distinct loggers for each level
-type AlogStruct struct {
-	Trace     *log.Logger
-	Debug     *log.Logger
-	Info      *log.Logger
-	Notice    *log.Logger
-	Warning   *log.Logger
-	Alert     *log.Logger
-	Error     *log.Logger
-	Critical  *log.Logger
-	Emergency *log.Logger
-	firstIowr IowrStruct //contains original values for iowriters when AlogStruct was created
-	// individual alog level io.Writers can be changed after initialization via .SetOutput and also if referencing things like os.Stdout could be altered via some os.Stdout type of redirection ...
+// Base labels for each log level
+const (
+	TraceBlab     = "TRACE: "
+	DebugBlab     = "DEBUG: "
+	InfoBlab      = "INFO: "
+	NoticeBlab    = "NOTICE: "
+	WarningBlab   = "WARNING: "
+	AlertBlab     = "ALERT: "
+	ErrorBlab     = "ERROR: "
+	CriticalBlab  = "CRITICAL: "
+	EmergencyBlab = "EMERGENCY: "
+)
+
+type lvlListStruct struct {
+	level **lvlStruct
+	name  string
+	Blab  string
+	iowr  *io.Writer
 }
 
-// firstIowr returns the IowrStruct contents on a specific AlogStruct creation
-func (a *AlogStruct) FirstIowr() IowrStruct {
-	return a.firstIowr
-}
-
-// SetGroupLogFlags - sets stdlib log flags for all alog levels to fval.
-// fval - stdlib log flag value.
-// Calling this func with fval=0 can be handy during testing (especially to avoid dealing with [changing] time output).
-// If you have other goroutines that may also call this or explicitly such as a.Trace.SetFlag() you are
-// responsible in coordinating that possibly with a mutex.
-func (a *AlogStruct) SetGroupLogFlags(fval int) {
-	for _, v := range a.alogLBList() {
-		v.Level.SetFlags(fval)
+func (g *GlvlStruct) lvlList() []lvlListStruct {
+	return []lvlListStruct{
+		{&g.Trace, "Trace", TraceBlab, &g.firstIowr.Trace},
+		{&g.Debug, "Debug", DebugBlab, &g.firstIowr.Debug},
+		{&g.Info, "Info", InfoBlab, &g.firstIowr.Info},
+		{&g.Notice, "Notice", NoticeBlab, &g.firstIowr.Notice},
+		{&g.Warning, "Warning", WarningBlab, &g.firstIowr.Warning},
+		{&g.Alert, "Alert", AlertBlab, &g.firstIowr.Alert},
+		{&g.Error, "Error", ErrorBlab, &g.firstIowr.Error},
+		{&g.Critical, "Critical", CriticalBlab, &g.firstIowr.Critical},
+		{&g.Emergency, "Emergency", EmergencyBlab, &g.firstIowr.Emergency},
 	}
 }
 
-// SetGroupLabel - applies alog group string to all alog levels.
-// glabel - alog group label
-// If you have other goroutines that may also call this or explicitly such as a.Trace.SetPrefix() you are
-// responsible in coordinating that possibly with a mutex
-func (a *AlogStruct) SetGroupLabel(glabel string) {
-	for _, v := range a.alogLBList() {
-		v.Level.SetPrefix(glabel + v.Blab)
-	}
+// NewSpecial ... returns *GlvlStruct and error based on following arguments.
+//	- glabel is grplog group label applied to all levels of logging
+//		and concatenated with each specific level logger base labels [Blab]
+//  - flags - func name type
+//	- logFlagsGroup is stdlib log - log flags value to apply to all levels of logging
+// 	- iowr is to contain corresponding iowriters for all logging levels
+//		[one could use ioutil.Discard to inactivate a level of logging]
+func NewSpecial(glabel string, flags int, logFlagsGroup int, iowr IowrStruct) (*GlvlStruct, error) {
+	return newll(glabel, flags, logFlagsGroup, &iowr, false)
 }
 
-/* NewSpecial returns *AlogStruct and error based on following arguments.
- 	- iowr is to contain corresponding iowriters for all logging levels
-		[one could use ioutil.Discard to inactivate a level of logging]
- 	- glabel is alog group label applied to all levels of logging
-		and concatenated with each specific level logger base labels [Blab]
-	- logFlagsGroup is stdlib log - log flags value to apply to all levels of logging
-*/
-func NewSpecial(iowr IowrStruct, glabel string, logFlagsGroup int) (*AlogStruct, error) {
-	return newll(&iowr, glabel, logFlagsGroup)
+// New ... returns *GlvlStruct and error based on following arguments.
+// see NewSpecial on input parameters.
+func New(glabel string, flags int) (*GlvlStruct, error) {
+	return newll(glabel, flags, LflagsDef, nil, false)
 }
 
-/* New returns *AlogStruct and error
- 	- glabel is alog group label applied to all levels of logging
-		and concatenated with each specific level logger base labels
-*/
-func New(glabel string) (*AlogStruct, error) {
-	return newll(nil, glabel, LFlagsDef)
+// MustNew returns *GlvlStruct and panics if any error occurs
+// see NewSpecial on input parameters
+func MustNew(glabel string, flags int) *GlvlStruct {
+	g, _ := newll(glabel, flags, LflagsDef, nil, true)
+	return g
 }
 
-/*
-******** NON public and supporting items ********
- */
+var grplogCount uint32
+var muGrplogCount sync.Mutex
 
-// alog (L)evel (B)aselabel List struct
-type alogLBListStruct struct {
-	Level *log.Logger // alog level
-	Blab  string      // alog level base label
-}
-
-func (a *AlogStruct) alogLBList() []alogLBListStruct {
-	return []alogLBListStruct{
-		{a.Trace, TraceBlab},
-		{a.Debug, DebugBlab},
-		{a.Info, InfoBlab},
-		{a.Notice, NoticeBlab},
-		{a.Warning, WarningBlab},
-		{a.Alert, AlertBlab},
-		{a.Error, ErrorBlab},
-		{a.Critical, CriticalBlab},
-		{a.Emergency, EmergencyBlab},
-	}
-}
-
-// newll creates entry points for convenience logger hooks calling back into stdlib log.Logging
-func newll(iowr *IowrStruct, glabel string, logFlags int) (*AlogStruct, error) {
-	alog := AlogStruct{firstIowr: IowrDefault()}
+// newll - worker func that creates a new blogStruct
+func newll(glabel string, flags int, logFlags int, iowr *IowrStruct, panicErr bool) (*GlvlStruct, error) {
+	g := &GlvlStruct{firstIowr: IowrDefault()}
 	if iowr != nil {
-		alog.firstIowr = *iowr
+		g.firstIowr = *iowr
 	}
-	if alog.firstIowr.Trace == nil ||
-		alog.firstIowr.Debug == nil ||
-		alog.firstIowr.Info == nil ||
-		alog.firstIowr.Notice == nil ||
-		alog.firstIowr.Warning == nil ||
-		alog.firstIowr.Alert == nil ||
-		alog.firstIowr.Error == nil ||
-		alog.firstIowr.Critical == nil ||
-		alog.firstIowr.Emergency == nil {
-		return nil, errors.New("one or more elements of iowrStruct are nil for io.Writer, you might consider using ioutil.Discard for such elements")
+	// test g.firstIowr.Error = nil
+
+	muGrplogCount.Lock()
+	grplogCount++
+	g.Name = fmt.Sprintf("%s<%d>", glabel, grplogCount) //ensure an unique name
+	muGrplogCount.Unlock()
+
+	for _, v := range g.lvlList() {
+		if *v.iowr == nil {
+			errnew := errors.New(v.name + " io.Writer is nil, if you want to discard use ioutil.Discard")
+			if panicErr {
+				log.Panic(errnew)
+			}
+			return nil, errnew
+		}
+		*v.level = &lvlStruct{
+			log:   log.New(os.Stdout, glabel+v.Blab, logFlags),
+			flags: flags,
+			mu:    &g.mu,
+			par:   g,
+			name:  v.name,
+			align: alignStruct{filea: LogAlignFileDef, funca: LogAlignFuncDef},
+		}
 	}
-
-	alog.Trace = log.New(alog.firstIowr.Trace, glabel+TraceBlab, logFlags)
-	alog.Debug = log.New(alog.firstIowr.Debug, glabel+DebugBlab, logFlags)
-	alog.Info = log.New(alog.firstIowr.Info, glabel+InfoBlab, logFlags)
-	alog.Notice = log.New(alog.firstIowr.Notice, glabel+NoticeBlab, logFlags)
-	alog.Warning = log.New(alog.firstIowr.Warning, glabel+WarningBlab, logFlags)
-	alog.Alert = log.New(alog.firstIowr.Alert, glabel+AlertBlab, logFlags)
-	alog.Error = log.New(alog.firstIowr.Error, glabel+ErrorBlab, logFlags)
-	alog.Critical = log.New(alog.firstIowr.Critical, glabel+CriticalBlab, logFlags)
-	alog.Emergency = log.New(alog.firstIowr.Emergency, glabel+EmergencyBlab, logFlags)
-
-	return &alog, nil
+	return g, nil
 }
