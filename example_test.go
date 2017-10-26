@@ -170,18 +170,12 @@ func Example_printvarious() {
 	g.Trace.Printf("3 Should NOT see one:%d two:%d res:%d\n", 1, 2, 3)
 	g.Debug.SetPkgFlags(grplog.FfnFull)
 	g.Debug.Printf("<=full funcname")
-	g.Debug.SetPkgFlags(grplog.FfnBase)
-	g.Debug.Printf("<=base funcname")
+	g.Debug.SetPkgFlags(grplog.FfnBase | grplog.Ffilenogps)
 	g.Debug.SetFlags(log.Llongfile)
-	g.Debug.Printf("%s", "<=base funcname with longfile")
-	g.Debug.SetPkgFlags(grplog.FfnBase | grplog.Ffilenogps)
-	g.Debug.Println("<=base funcname longfile less gopathsrc")
-	g.Debug.SetFlags(log.Lshortfile)
-	g.Debug.Printf("<=base funcname with shortfile")
-	g.Debug.SetPkgFlags(grplog.FfnBase | grplog.Ffilenogps)
+	g.Debug.Print("<=longfile less gps")
 	g.Debug.SetIgnore(true)
-	g.Debug.Print("debug:should *NOT* see")
-
+	g.Debug.Print("should NOT see <=base funcname")
+	g.Debug.Print("should not see")
 	// Output:
 	// glog:TRACE: "this a test"
 	// glog:DEBUG: "this a test"
@@ -209,8 +203,6 @@ func Example_printvarious() {
 	// glog:NOTICE: should see this notice
 	// glog:TRACE: one:1 two:2 res:3
 	// glog:DEBUG: FN:github.com/phcurtis/grplog_test.Example_printvarious() <=full funcname
-	// glog:DEBUG: FN:grplog_test.Example_printvarious() <=base funcname
-	// glog:DEBUG: /home/paul/go/src/github.com/phcurtis/grplog/example_test.go:176 FN:grplog_test.Example_printvarious() <=base funcname with longfile
-	// glog:DEBUG: github.com/phcurtis/grplog/example_test.go:178 FN:grplog_test.Example_printvarious() <=base funcname longfile less gopathsrc
-	// glog:DEBUG: example_test.go:180     FN:grplog_test.Example_printvarious() <=base funcname with shortfile
+	// glog:DEBUG: github.com/phcurtis/grplog/example_test.go:175 FN:grplog_test.Example_printvarious() <=longfile less gps
+
 }
