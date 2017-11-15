@@ -18,12 +18,16 @@ import (
 var osExit = os.Exit
 
 func (l *LvlStruct) outExit(s string) {
-	_ = l.out(s)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	_ = l.outll(1, s)
 	osExit(1)
 }
 
 func (l *LvlStruct) outPanic(s string) {
-	_ = l.out(s)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	_ = l.outll(1, s)
 	panic(s)
 }
 
