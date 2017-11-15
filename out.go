@@ -24,7 +24,7 @@ func (l *LvlStruct) outExit(s string) {
 
 func (l *LvlStruct) outPanic(s string) {
 	_ = l.out(s)
-	log.Panic(s)
+	panic(s)
 }
 
 func (l *LvlStruct) out(s string) error {
