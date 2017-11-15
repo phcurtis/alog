@@ -19,7 +19,7 @@ import (
 )
 
 // Version of this package
-var Version = 0.212
+var Version = 0.220
 
 //type flagst int
 
@@ -226,12 +226,13 @@ func newll(glabel string, flags int, logFlags int, iowr *IowrStruct, panicErr bo
 			return nil, errnew
 		}
 		*v.level = &LvlStruct{
-			log:   log.New(os.Stdout, glabel+v.Blab, logFlags),
-			flags: flags,
-			mu:    &g.mu,
-			par:   g,
-			name:  v.name,
-			align: alignStruct{filea: LogAlignFileDef, funca: LogAlignFuncDef},
+			log:       log.New(*v.iowr, glabel+v.Blab, logFlags),
+			logOutput: *v.iowr,
+			flags:     flags,
+			mu:        &g.mu,
+			par:       g,
+			name:      v.name,
+			align:     alignStruct{filea: LogAlignFileDef, funca: LogAlignFuncDef},
 		}
 	}
 	return g, nil
