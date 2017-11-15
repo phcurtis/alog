@@ -124,6 +124,10 @@ func Example_verifyLvls() {
 
 func Example_groupprintln() {
 	g, err := grplog.NewSpecial("glog:", 0, grplog.LflagsOff, grplog.IowrDefault())
+	// Error, Critical and Emergency by default go to standard error so set them to stdout
+	g.Error.SetOutput(os.Stdout)
+	g.Critical.SetOutput(os.Stdout)
+	g.Emergency.SetOutput(os.Stdout)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -145,6 +149,12 @@ func Example_printvarious() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	// Error, Critical and Emergency by default go to standard error so set them to stdout
+	g.Error.SetOutput(os.Stdout)
+	g.Critical.SetOutput(os.Stdout)
+	g.Emergency.SetOutput(os.Stdout)
+
 	g.CondPrintln(true, `"this a test"`)
 	g.CondPrintln(false, `"should not see"`)
 	g.Trace.Println("*****traceLevel-println*****")
@@ -203,6 +213,6 @@ func Example_printvarious() {
 	// glog:NOTICE: should see this notice
 	// glog:TRACE: one:1 two:2 res:3
 	// glog:DEBUG: FN:github.com/phcurtis/grplog_test.Example_printvarious() <=full funcname
-	// glog:DEBUG: github.com/phcurtis/grplog/example_test.go:175 FN:grplog_test.Example_printvarious() <=longfile less gps
+	// glog:DEBUG: github.com/phcurtis/grplog/example_test.go:185 FN:grplog_test.Example_printvarious() <=longfile less gps
 
 }
